@@ -72,6 +72,17 @@ typedef enum CXChildVisitResult (*ljclang_callback)(CXCursor* cursor, CXCursor* 
 
 enum CXChildVisitResult ljclang_tree_visitor(CXCursor, CXCursor, void*);
 
+typedef void* CXCompletionString;
+
+CXCompletionString clang_getCursorCompletionString(CXCursor cursor);
+
+CXString clang_getCompletionChunkText(CXCompletionString completion_string,
+                                      unsigned chunk_number);
+
+unsigned clang_getNumCompletionChunks(CXCompletionString completion_string);
+
+unsigned clang_getCompletionPriority(CXCompletionString completion_string);
+
 unsigned clang_visitChildren(CXCursor parent,
                              CXCursorVisitor visitor,
                              void* client_data);
@@ -444,6 +455,55 @@ cursor_kinds.MacroDefinition = 501
 cursor_kinds.MacroExpansion = 502
 cursor_kinds.InclusionDirective = 503
 cursor_kinds.ModuleImportDecl = 600
+local CompletionChunk
+do
+  local _base_0 = { }
+  _base_0.__index = _base_0
+  local _class_0 = setmetatable({
+    __init = function(self, text)
+      self.text = text
+    end,
+    __base = _base_0,
+    __name = "CompletionChunk"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  CompletionChunk = _class_0
+end
+local CompletionString
+do
+  local _base_0 = { }
+  _base_0.__index = _base_0
+  local _class_0 = setmetatable({
+    __init = function(self, __string)
+      self.__string = __string
+      local chunk_count = libclang.clang_getNumCompletionChunks(self.__string)
+      self.chunks = { }
+      for i = 0, chunk_count - 1 do
+        local text = ffi.string(libclang.clang_getCString(libclang.clang_getCompletionChunkText(self.__string, i)))
+        self.chunks[i + 1] = CompletionChunk(text)
+      end
+      self.priority = libclang.clang_getCompletionPriority(self.__string)
+    end,
+    __base = _base_0,
+    __name = "CompletionString"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  CompletionString = _class_0
+end
 local CursorKind
 do
   local _base_0 = { }
@@ -486,6 +546,9 @@ do
         return cursor.visit_continue
       end)
       return res
+    end,
+    get_completion_string = function(self)
+      return CompletionString(libclang.clang_getCursorCompletionString(self.__cursor))
     end
   }
   _base_0.__index = _base_0
@@ -591,5 +654,6 @@ return {
   Index = Index,
   TranslationUnit = TranslationUnit,
   Cursor = Cursor,
-  CursorKind = CursorKind
+  CursorKind = CursorKind,
+  cursor_kinds = cursor_kinds
 }

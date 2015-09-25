@@ -5,6 +5,12 @@ local cursor = unit.cursor
 print('Root cursor:', cursor.kind.string, cursor.spelling)
 cursor:visit(function(cursor)
     print('Visiting:', cursor.kind.string, cursor.spelling)
+    local compl = cursor:get_completion_string()
+    print('Priority:', compl.priority)
+    print('Chunks:')
+    for _, c in ipairs(compl.chunks) do
+        print('Text:', c.text)
+    end
     return cursor.visit_recurse -- or clang.Cursor.visit_recurse
 end)
 for i, v in ipairs(cursor:get_children()) do

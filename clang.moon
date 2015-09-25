@@ -73,6 +73,17 @@ typedef enum CXChildVisitResult (*ljclang_callback)(CXCursor* cursor, CXCursor* 
 
 enum CXChildVisitResult ljclang_tree_visitor(CXCursor, CXCursor, void*);
 
+typedef void* CXCompletionString;
+
+CXCompletionString clang_getCursorCompletionString(CXCursor cursor);
+
+CXString clang_getCompletionChunkText(CXCompletionString completion_string,
+                                      unsigned chunk_number);
+
+unsigned clang_getNumCompletionChunks(CXCompletionString completion_string);
+
+unsigned clang_getCompletionPriority(CXCompletionString completion_string);
+
 unsigned clang_visitChildren(CXCursor parent,
                              CXCursorVisitor visitor,
                              void* client_data);
@@ -449,6 +460,19 @@ cursor_kinds.MacroExpansion = 502
 cursor_kinds.InclusionDirective = 503
 cursor_kinds.ModuleImportDecl = 600
 
+class CompletionChunk
+  new: (@text) =>
+
+class CompletionString
+  new: (@__string) =>
+    chunk_count = libclang.clang_getNumCompletionChunks @__string
+    @chunks = {}
+    for i=0,chunk_count-1
+      text = ffi.string libclang.clang_getCString libclang.clang_getCompletionChunkText @__string, i
+      @chunks[i+1] = CompletionChunk text
+
+    @priority = libclang.clang_getCompletionPriority @__string
+
 class CursorKind
   new: (@value) => @string = cursor_map[@value]
 
@@ -474,6 +498,7 @@ class Cursor
       count += 1
       cursor.visit_continue
     res
+  get_completion_string: => CompletionString libclang.clang_getCursorCompletionString @__cursor
   @visit_break = libclang.CXChildVisit_Break
   @visit_continue = libclang.CXChildVisit_Continue
   @visit_recurse = libclang.CXChildVisit_Recurse
