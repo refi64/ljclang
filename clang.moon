@@ -33,16 +33,6 @@ struct CXUnsavedFile {
   unsigned long Length;
 };
 
-enum CXErrorCode
-clang_parseTranslationUnit2(CXIndex CIdx,
-                            const char *source_filename,
-                            const char *const *command_line_args,
-                            int num_command_line_args,
-                            struct CXUnsavedFile *unsaved_files,
-                            unsigned num_unsaved_files,
-                            unsigned options,
-                            CXTranslationUnit *out_TU);
-
 CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
                             const char *source_filename,
                             const char *const *command_line_args,
