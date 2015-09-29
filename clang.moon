@@ -77,6 +77,37 @@ unsigned clang_getCompletionPriority(CXCompletionString completion_string);
 unsigned clang_visitChildren(CXCursor parent,
                              CXCursorVisitor visitor,
                              void* client_data);
+
+int clang_getCompletionChunkKind(CXCompletionString completion_string,
+                                 unsigned chunk_number);
+
+typedef struct {
+  int CursorKind;
+  CXCompletionString CompletionString;
+} CXCompletionResult;
+
+typedef struct {
+  CXCompletionResult *Results;
+  unsigned NumResults;
+} CXCodeCompleteResults;
+
+enum CXCodeComplete_Flags {
+  CXCodeComplete_IncludeMacros = 0x01,
+  CXCodeComplete_IncludeCodePatterns = 0x02,
+  CXCodeComplete_IncludeBriefComments = 0x04
+};
+
+CXCodeCompleteResults *clang_codeCompleteAt(CXTranslationUnit TU,
+                                            const char *complete_filename,
+                                            unsigned complete_line,
+                                            unsigned complete_column,
+                                            struct CXUnsavedFile *unsaved_files,
+                                            unsigned num_unsaved_files,
+                                            unsigned options);
+
+void clang_sortCodeCompletionResults(CXCompletionResult *Results,
+                                     unsigned NumResults);
+void clang_disposeCodeCompleteResults(CXCodeCompleteResults *Results);
 ]]
 
 libclang = ffi.load 'ljclang'
@@ -450,8 +481,72 @@ cursor_kinds.MacroExpansion = 502
 cursor_kinds.InclusionDirective = 503
 cursor_kinds.ModuleImportDecl = 600
 
+completion_map = {}
+completion_map[0] = 'Optional'
+completion_map[1] = 'TypedText'
+completion_map[2] = 'Text'
+completion_map[3] = 'Placeholder'
+completion_map[4] = 'Informative'
+completion_map[5] = 'CurrentParameter'
+completion_map[6] = 'LeftParen'
+completion_map[7] = 'RightParen'
+completion_map[8] = 'LeftBracket'
+completion_map[9] = 'RightBracket'
+completion_map[10] = 'LeftBrace'
+completion_map[11] = 'RightBrace'
+completion_map[12] = 'LeftAngle'
+completion_map[13] = 'RightAngle'
+completion_map[14] = 'Comma'
+completion_map[15] = 'ResultType'
+completion_map[16] = 'Colon'
+completion_map[17] = 'SemiColon'
+completion_map[18] = 'Equal'
+completion_map[19] = 'HorizontalSpace'
+completion_map[20] = 'VerticalSpace'
+
+completion_kinds = {}
+completion_kinds.Optional = 0
+completion_kinds.TypedText = 1
+completion_kinds.Text = 2
+completion_kinds.Placeholder = 3
+completion_kinds.Informative = 4
+completion_kinds.CurrentParameter = 5
+completion_kinds.LeftParen = 6
+completion_kinds.RightParen = 7
+completion_kinds.LeftBracket = 8
+completion_kinds.RightBracket = 9
+completion_kinds.LeftBrace = 10
+completion_kinds.RightBrace = 11
+completion_kinds.LeftAngle = 12
+completion_kinds.RightAngle = 13
+completion_kinds.Comma = 14
+completion_kinds.ResultType = 15
+completion_kinds.Colon = 16
+completion_kinds.SemiColon = 17
+completion_kinds.Equal = 18
+completion_kinds.HorizontalSpace = 19
+completion_kinds.VerticalSpace = 20
+
+unsaved_files = (unsaved) ->
+  unsaved_len = 0
+  unsaved_len += 1 for _ in pairs unsaved
+  unsaved_c = ffi.new 'struct CXUnsavedFile[?]', unsaved_len
+  i = 0
+  for p, v in pairs unsaved
+    unsaved_c[i].Filename = p
+    unsaved_c[i].Contents = v
+    unsaved_c[i].Length = ffi.new 'int', #v
+    i += 1
+  {unsaved_c, unsaved_len}
+
+class CursorKind
+  new: (@value) => @string = cursor_map[@value]
+
+class CompletionKind
+  new: (@value) => @string = completion_map[@value]
+
 class CompletionChunk
-  new: (@text) =>
+  new: (@text, @kind) =>
 
 class CompletionString
   new: (@__string) =>
@@ -459,12 +554,23 @@ class CompletionString
     @chunks = {}
     for i=0,chunk_count-1
       text = ffi.string libclang.clang_getCString libclang.clang_getCompletionChunkText @__string, i
-      @chunks[i+1] = CompletionChunk text
+      kind = CompletionKind libclang.clang_getCompletionChunkKind @__string, i
+      @chunks[i+1] = CompletionChunk text, kind
 
     @priority = libclang.clang_getCompletionPriority @__string
 
-class CursorKind
-  new: (@value) => @string = cursor_map[@value]
+class CompletionResult
+  new: (@__result) =>
+    @kind = CursorKind @__result.CursorKind
+    @string = CompletionString @__result.CompletionString
+
+class CompletionResults
+  new: (@__results) =>
+    @__results = ffi.gc @__results, libclang.clang_disposeCodeCompleteResults
+    @results = {i, CompletionResult @__results[0].Results[i-1] for i=1,@__results[0].NumResults}
+
+  sort: =>
+    liblcang.clang_sortCodeCompletionResults @__results[0].Results, @__results[0].NumResults
 
 class Cursor
   new: (@__cursor) =>
@@ -498,23 +604,20 @@ class TranslationUnit
     @__unit = ffi.gc @__unit, libclang.clang_disposeTranslationUnit
     @cursor = Cursor libclang.clang_getTranslationUnitCursor @__unit
 
+  complete_at: (filename, line, column, unsaved) =>
+    {unsaved_c, unsaved_len} = unsaved_files unsaved
+    CompletionResults libclang.clang_codeCompleteAt @__unit, filename, line, column, unsaved_c, unsaved_len, 0
+
 class Index
   new: (exclude_pch_decls=0, display_diagnostics=1) =>
     @__index = ffi.gc libclang.clang_createIndex(exclude_pch_decls, display_diagnostics), libclang.clang_disposeIndex
 
   parse: (path, args, unsaved) =>
-    unsaved_len = 0
-    unsaved_len += 1 for _ in pairs unsaved
-    unsaved_c = ffi.new 'struct CXUnsavedFile[?]', unsaved_len
-    i = 0
-    for p, v in pairs unsaved
-      unsaved_c[i].Filename = p
-      unsaved_c[i].Contents = v
-      unsaved_c[i].Length = ffi.new 'int', #v
-      i += 1
+    {unsaved_c, unsaved_len} = unsaved_files unsaved
     args_c = ffi.new 'const char*[?]', #args, args
     unit = libclang.clang_parseTranslationUnit @__index, path, args_c, #args, unsaved_c, unsaved_len, 0
     assert unit
     TranslationUnit unit
 
-{:Index, :TranslationUnit, :Cursor, :CursorKind, :cursor_kinds}
+{:Index, :TranslationUnit, :Cursor, :CursorKind, :CompletionChunk,
+ :CompletionString, :CompletionResult, :CompletionResults, :cursor_kinds}

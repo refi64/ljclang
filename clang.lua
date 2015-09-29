@@ -76,6 +76,37 @@ unsigned clang_getCompletionPriority(CXCompletionString completion_string);
 unsigned clang_visitChildren(CXCursor parent,
                              CXCursorVisitor visitor,
                              void* client_data);
+
+int clang_getCompletionChunkKind(CXCompletionString completion_string,
+                                 unsigned chunk_number);
+
+typedef struct {
+  int CursorKind;
+  CXCompletionString CompletionString;
+} CXCompletionResult;
+
+typedef struct {
+  CXCompletionResult *Results;
+  unsigned NumResults;
+} CXCodeCompleteResults;
+
+enum CXCodeComplete_Flags {
+  CXCodeComplete_IncludeMacros = 0x01,
+  CXCodeComplete_IncludeCodePatterns = 0x02,
+  CXCodeComplete_IncludeBriefComments = 0x04
+};
+
+CXCodeCompleteResults *clang_codeCompleteAt(CXTranslationUnit TU,
+                                            const char *complete_filename,
+                                            unsigned complete_line,
+                                            unsigned complete_column,
+                                            struct CXUnsavedFile *unsaved_files,
+                                            unsigned num_unsaved_files,
+                                            unsigned options);
+
+void clang_sortCodeCompletionResults(CXCompletionResult *Results,
+                                     unsigned NumResults);
+void clang_disposeCodeCompleteResults(CXCodeCompleteResults *Results);
 ]])
 local libclang = ffi.load('ljclang')
 local cursor_map = { }
@@ -445,13 +476,120 @@ cursor_kinds.MacroDefinition = 501
 cursor_kinds.MacroExpansion = 502
 cursor_kinds.InclusionDirective = 503
 cursor_kinds.ModuleImportDecl = 600
+local completion_map = { }
+completion_map[0] = 'Optional'
+completion_map[1] = 'TypedText'
+completion_map[2] = 'Text'
+completion_map[3] = 'Placeholder'
+completion_map[4] = 'Informative'
+completion_map[5] = 'CurrentParameter'
+completion_map[6] = 'LeftParen'
+completion_map[7] = 'RightParen'
+completion_map[8] = 'LeftBracket'
+completion_map[9] = 'RightBracket'
+completion_map[10] = 'LeftBrace'
+completion_map[11] = 'RightBrace'
+completion_map[12] = 'LeftAngle'
+completion_map[13] = 'RightAngle'
+completion_map[14] = 'Comma'
+completion_map[15] = 'ResultType'
+completion_map[16] = 'Colon'
+completion_map[17] = 'SemiColon'
+completion_map[18] = 'Equal'
+completion_map[19] = 'HorizontalSpace'
+completion_map[20] = 'VerticalSpace'
+local completion_kinds = { }
+completion_kinds.Optional = 0
+completion_kinds.TypedText = 1
+completion_kinds.Text = 2
+completion_kinds.Placeholder = 3
+completion_kinds.Informative = 4
+completion_kinds.CurrentParameter = 5
+completion_kinds.LeftParen = 6
+completion_kinds.RightParen = 7
+completion_kinds.LeftBracket = 8
+completion_kinds.RightBracket = 9
+completion_kinds.LeftBrace = 10
+completion_kinds.RightBrace = 11
+completion_kinds.LeftAngle = 12
+completion_kinds.RightAngle = 13
+completion_kinds.Comma = 14
+completion_kinds.ResultType = 15
+completion_kinds.Colon = 16
+completion_kinds.SemiColon = 17
+completion_kinds.Equal = 18
+completion_kinds.HorizontalSpace = 19
+completion_kinds.VerticalSpace = 20
+local unsaved_files
+unsaved_files = function(unsaved)
+  local unsaved_len = 0
+  for _ in pairs(unsaved) do
+    unsaved_len = unsaved_len + 1
+  end
+  local unsaved_c = ffi.new('struct CXUnsavedFile[?]', unsaved_len)
+  local i = 0
+  for p, v in pairs(unsaved) do
+    unsaved_c[i].Filename = p
+    unsaved_c[i].Contents = v
+    unsaved_c[i].Length = ffi.new('int', #v)
+    i = i + 1
+  end
+  return {
+    unsaved_c,
+    unsaved_len
+  }
+end
+local CursorKind
+do
+  local _base_0 = { }
+  _base_0.__index = _base_0
+  local _class_0 = setmetatable({
+    __init = function(self, value)
+      self.value = value
+      self.string = cursor_map[self.value]
+    end,
+    __base = _base_0,
+    __name = "CursorKind"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  CursorKind = _class_0
+end
+local CompletionKind
+do
+  local _base_0 = { }
+  _base_0.__index = _base_0
+  local _class_0 = setmetatable({
+    __init = function(self, value)
+      self.value = value
+      self.string = completion_map[self.value]
+    end,
+    __base = _base_0,
+    __name = "CompletionKind"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  CompletionKind = _class_0
+end
 local CompletionChunk
 do
   local _base_0 = { }
   _base_0.__index = _base_0
   local _class_0 = setmetatable({
-    __init = function(self, text)
-      self.text = text
+    __init = function(self, text, kind)
+      self.text, self.kind = text, kind
     end,
     __base = _base_0,
     __name = "CompletionChunk"
@@ -477,7 +615,8 @@ do
       self.chunks = { }
       for i = 0, chunk_count - 1 do
         local text = ffi.string(libclang.clang_getCString(libclang.clang_getCompletionChunkText(self.__string, i)))
-        self.chunks[i + 1] = CompletionChunk(text)
+        local kind = CompletionKind(libclang.clang_getCompletionChunkKind(self.__string, i))
+        self.chunks[i + 1] = CompletionChunk(text, kind)
       end
       self.priority = libclang.clang_getCompletionPriority(self.__string)
     end,
@@ -494,17 +633,18 @@ do
   _base_0.__class = _class_0
   CompletionString = _class_0
 end
-local CursorKind
+local CompletionResult
 do
   local _base_0 = { }
   _base_0.__index = _base_0
   local _class_0 = setmetatable({
-    __init = function(self, value)
-      self.value = value
-      self.string = cursor_map[self.value]
+    __init = function(self, __result)
+      self.__result = __result
+      self.kind = CursorKind(self.__result.CursorKind)
+      self.string = CompletionString(self.__result.CompletionString)
     end,
     __base = _base_0,
-    __name = "CursorKind"
+    __name = "CompletionResult"
   }, {
     __index = _base_0,
     __call = function(cls, ...)
@@ -514,7 +654,40 @@ do
     end
   })
   _base_0.__class = _class_0
-  CursorKind = _class_0
+  CompletionResult = _class_0
+end
+local CompletionResults
+do
+  local _base_0 = {
+    sort = function(self)
+      return liblcang.clang_sortCodeCompletionResults(self.__results[0].Results, self.__results[0].NumResults)
+    end
+  }
+  _base_0.__index = _base_0
+  local _class_0 = setmetatable({
+    __init = function(self, __results)
+      self.__results = __results
+      self.__results = ffi.gc(self.__results, libclang.clang_disposeCodeCompleteResults)
+      do
+        local _tbl_0 = { }
+        for i = 1, self.__results[0].NumResults do
+          _tbl_0[i] = CompletionResult(self.__results[0].Results[i - 1])
+        end
+        self.results = _tbl_0
+      end
+    end,
+    __base = _base_0,
+    __name = "CompletionResults"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  CompletionResults = _class_0
 end
 local Cursor
 do
@@ -573,7 +746,16 @@ do
 end
 local TranslationUnit
 do
-  local _base_0 = { }
+  local _base_0 = {
+    complete_at = function(self, filename, line, column, unsaved)
+      local unsaved_c, unsaved_len
+      do
+        local _obj_0 = unsaved_files(unsaved)
+        unsaved_c, unsaved_len = _obj_0[1], _obj_0[2]
+      end
+      return CompletionResults(libclang.clang_codeCompleteAt(self.__unit, filename, line, column, unsaved_c, unsaved_len, 0))
+    end
+  }
   _base_0.__index = _base_0
   local _class_0 = setmetatable({
     __init = function(self, __unit)
@@ -598,17 +780,10 @@ local Index
 do
   local _base_0 = {
     parse = function(self, path, args, unsaved)
-      local unsaved_len = 0
-      for _ in pairs(unsaved) do
-        unsaved_len = unsaved_len + 1
-      end
-      local unsaved_c = ffi.new('struct CXUnsavedFile[?]', unsaved_len)
-      local i = 0
-      for p, v in pairs(unsaved) do
-        unsaved_c[i].Filename = p
-        unsaved_c[i].Contents = v
-        unsaved_c[i].Length = ffi.new('int', #v)
-        i = i + 1
+      local unsaved_c, unsaved_len
+      do
+        local _obj_0 = unsaved_files(unsaved)
+        unsaved_c, unsaved_len = _obj_0[1], _obj_0[2]
       end
       local args_c = ffi.new('const char*[?]', #args, args)
       local unit = libclang.clang_parseTranslationUnit(self.__index, path, args_c, #args, unsaved_c, unsaved_len, 0)
@@ -645,5 +820,9 @@ return {
   TranslationUnit = TranslationUnit,
   Cursor = Cursor,
   CursorKind = CursorKind,
+  CompletionChunk = CompletionChunk,
+  CompletionString = CompletionString,
+  CompletionResult = CompletionResult,
+  CompletionResults = CompletionResults,
   cursor_kinds = cursor_kinds
 }
