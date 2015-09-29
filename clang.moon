@@ -609,7 +609,7 @@ class TranslationUnit
     @__unit = ffi.gc @__unit, libclang.clang_disposeTranslationUnit
     @cursor = Cursor libclang.clang_getTranslationUnitCursor @__unit
 
-  reparse: (unsaved) =>
+  reparse: (unsaved={}) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved
     res = libclang.clang_reparseTranslationUnit @__unit, unsaved_len, unsaved_c, 0
     assert res == 0
@@ -622,7 +622,7 @@ class Index
   new: (exclude_pch_decls=0, display_diagnostics=1) =>
     @__index = ffi.gc libclang.clang_createIndex(exclude_pch_decls, display_diagnostics), libclang.clang_disposeIndex
 
-  parse: (path, args, unsaved) =>
+  parse: (path, args={}, unsaved={}) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved
     args_c = ffi.new 'const char*[?]', #args, args
     unit = libclang.clang_parseTranslationUnit @__index, path, args_c, #args, unsaved_c, unsaved_len, 0

@@ -753,6 +753,9 @@ local TranslationUnit
 do
   local _base_0 = {
     reparse = function(self, unsaved)
+      if unsaved == nil then
+        unsaved = { }
+      end
       local unsaved_c, unsaved_len
       do
         local _obj_0 = unsaved_files(unsaved)
@@ -794,6 +797,12 @@ local Index
 do
   local _base_0 = {
     parse = function(self, path, args, unsaved)
+      if args == nil then
+        args = { }
+      end
+      if unsaved == nil then
+        unsaved = { }
+      end
       local unsaved_c, unsaved_len
       do
         local _obj_0 = unsaved_files(unsaved)
