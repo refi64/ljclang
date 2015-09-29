@@ -2,6 +2,7 @@ local clang = require 'clang'
 local index = clang.Index()
 local unsaved = {['x.c']='int fun;\nint main() {int v;return f;}'}
 local unit = index:parse('x.c', {'-Wall'}, unsaved)
+unit:reparse(unsaved)
 local cursor = unit.cursor
 print('Root cursor:', cursor.kind.string, cursor.spelling)
 cursor:visit(function(cursor)

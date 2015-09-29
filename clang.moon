@@ -41,6 +41,11 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
                             unsigned num_unsaved_files,
                             unsigned options);
 
+int clang_reparseTranslationUnit(CXTranslationUnit TU,
+                                 unsigned num_unsaved_files,
+                                 struct CXUnsavedFile *unsaved_files,
+                                 unsigned options);
+
 void clang_disposeTranslationUnit(CXTranslationUnit);
 
 CXCursor clang_getTranslationUnitCursor(CXTranslationUnit);
@@ -603,6 +608,11 @@ class TranslationUnit
   new: (@__unit) =>
     @__unit = ffi.gc @__unit, libclang.clang_disposeTranslationUnit
     @cursor = Cursor libclang.clang_getTranslationUnitCursor @__unit
+
+  reparse: (unsaved) =>
+    {unsaved_c, unsaved_len} = unsaved_files unsaved
+    res = libclang.clang_reparseTranslationUnit @__unit, unsaved_len, unsaved_c, 0
+    assert res == 0
 
   complete_at: (filename, line, column, unsaved) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved

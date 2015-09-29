@@ -40,6 +40,11 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
                             unsigned num_unsaved_files,
                             unsigned options);
 
+int clang_reparseTranslationUnit(CXTranslationUnit TU,
+                                 unsigned num_unsaved_files,
+                                 struct CXUnsavedFile *unsaved_files,
+                                 unsigned options);
+
 void clang_disposeTranslationUnit(CXTranslationUnit);
 
 CXCursor clang_getTranslationUnitCursor(CXTranslationUnit);
@@ -747,6 +752,15 @@ end
 local TranslationUnit
 do
   local _base_0 = {
+    reparse = function(self, unsaved)
+      local unsaved_c, unsaved_len
+      do
+        local _obj_0 = unsaved_files(unsaved)
+        unsaved_c, unsaved_len = _obj_0[1], _obj_0[2]
+      end
+      local res = libclang.clang_reparseTranslationUnit(self.__unit, unsaved_len, unsaved_c, 0)
+      return assert(res == 0)
+    end,
     complete_at = function(self, filename, line, column, unsaved)
       local unsaved_c, unsaved_len
       do
