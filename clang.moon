@@ -630,4 +630,5 @@ class Index
     TranslationUnit unit
 
 {:Index, :TranslationUnit, :Cursor, :CursorKind, :CompletionChunk,
- :CompletionString, :CompletionResult, :CompletionResults, :cursor_kinds}
+ :CompletionString, :CompletionResult, :CompletionResults, :cursor_kinds,
+ :completion_kinds}

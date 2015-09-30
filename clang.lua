@@ -847,5 +847,6 @@ return {
   CompletionString = CompletionString,
   CompletionResult = CompletionResult,
   CompletionResults = CompletionResults,
-  cursor_kinds = cursor_kinds
+  cursor_kinds = cursor_kinds,
+  completion_kinds = completion_kinds
 }
