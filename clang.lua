@@ -544,6 +544,15 @@ unsaved_files = function(unsaved)
     unsaved_len
   }
 end
+local opts
+opts = function(options)
+  local res = 0
+  for _index_0 = 1, #options do
+    local opt = options[_index_0]
+    res = bit.bor(res, opt)
+  end
+  return res
+end
 local CursorKind
 do
   local _base_0 = { }
@@ -752,16 +761,19 @@ end
 local TranslationUnit
 do
   local _base_0 = {
-    reparse = function(self, unsaved)
+    reparse = function(self, unsaved, options)
       if unsaved == nil then
         unsaved = { }
+      end
+      if options == nil then
+        options = { }
       end
       local unsaved_c, unsaved_len
       do
         local _obj_0 = unsaved_files(unsaved)
         unsaved_c, unsaved_len = _obj_0[1], _obj_0[2]
       end
-      local res = libclang.clang_reparseTranslationUnit(self.__unit, unsaved_len, unsaved_c, 0)
+      local res = libclang.clang_reparseTranslationUnit(self.__unit, unsaved_len, unsaved_c, opts(options))
       return assert(res == 0)
     end,
     complete_at = function(self, filename, line, column, unsaved)
@@ -791,17 +803,29 @@ do
     end
   })
   _base_0.__class = _class_0
+  local self = _class_0
+  self.DetailedPreprocessingRecord = 0x01
+  self.Incomplete = 0x02
+  self.PrecompiledPreamble = 0x04
+  self.CacheCompletionResults = 0x08
+  self.ForSerialization = 0x10
+  self.CXXChainedPCH = 0x20
+  self.SkipFunctionBodies = 0x40
+  self.IncludeBriefCommentsInCodeCompletion = 0x80
   TranslationUnit = _class_0
 end
 local Index
 do
   local _base_0 = {
-    parse = function(self, path, args, unsaved)
+    parse = function(self, path, args, unsaved, options)
       if args == nil then
         args = { }
       end
       if unsaved == nil then
         unsaved = { }
+      end
+      if options == nil then
+        options = { }
       end
       local unsaved_c, unsaved_len
       do
@@ -809,7 +833,7 @@ do
         unsaved_c, unsaved_len = _obj_0[1], _obj_0[2]
       end
       local args_c = ffi.new('const char*[?]', #args, args)
-      local unit = libclang.clang_parseTranslationUnit(self.__index, path, args_c, #args, unsaved_c, unsaved_len, 0)
+      local unit = libclang.clang_parseTranslationUnit(self.__index, path, args_c, #args, unsaved_c, unsaved_len, opts(options))
       assert(unit)
       return TranslationUnit(unit)
     end

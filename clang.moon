@@ -544,6 +544,11 @@ unsaved_files = (unsaved) ->
     i += 1
   {unsaved_c, unsaved_len}
 
+opts = (options) ->
+  res = 0
+  res = bit.bor res, opt for opt in *options
+  res
+
 class CursorKind
   new: (@value) => @string = cursor_map[@value]
 
@@ -609,23 +614,32 @@ class TranslationUnit
     @__unit = ffi.gc @__unit, libclang.clang_disposeTranslationUnit
     @cursor = Cursor libclang.clang_getTranslationUnitCursor @__unit
 
-  reparse: (unsaved={}) =>
+  reparse: (unsaved={}, options={}) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved
-    res = libclang.clang_reparseTranslationUnit @__unit, unsaved_len, unsaved_c, 0
+    res = libclang.clang_reparseTranslationUnit @__unit, unsaved_len, unsaved_c, opts options
     assert res == 0
 
   complete_at: (filename, line, column, unsaved) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved
     CompletionResults libclang.clang_codeCompleteAt @__unit, filename, line, column, unsaved_c, unsaved_len, 0
 
+  @DetailedPreprocessingRecord = 0x01
+  @Incomplete = 0x02
+  @PrecompiledPreamble = 0x04
+  @CacheCompletionResults = 0x08
+  @ForSerialization = 0x10
+  @CXXChainedPCH = 0x20
+  @SkipFunctionBodies = 0x40
+  @IncludeBriefCommentsInCodeCompletion = 0x80
+
 class Index
   new: (exclude_pch_decls=0, display_diagnostics=1) =>
     @__index = ffi.gc libclang.clang_createIndex(exclude_pch_decls, display_diagnostics), libclang.clang_disposeIndex
 
-  parse: (path, args={}, unsaved={}) =>
+  parse: (path, args={}, unsaved={}, options={}) =>
     {unsaved_c, unsaved_len} = unsaved_files unsaved
     args_c = ffi.new 'const char*[?]', #args, args
-    unit = libclang.clang_parseTranslationUnit @__index, path, args_c, #args, unsaved_c, unsaved_len, 0
+    unit = libclang.clang_parseTranslationUnit @__index, path, args_c, #args, unsaved_c, unsaved_len, opts options
     assert unit
     TranslationUnit unit
 
