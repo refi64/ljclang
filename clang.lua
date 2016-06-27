@@ -113,7 +113,7 @@ void clang_sortCodeCompletionResults(CXCompletionResult *Results,
                                      unsigned NumResults);
 void clang_disposeCodeCompleteResults(CXCodeCompleteResults *Results);
 ]])
-local libclang = ffi.load('ljclang')
+local libclang = ffi.load(tostring(debug.getinfo(1).source:match('@?(.*/)')) .. "/libljclang.so")
 local cursor_map = { }
 cursor_map[1] = 'UnexposedDecl'
 cursor_map[2] = 'StructDecl'
@@ -555,9 +555,10 @@ opts = function(options)
 end
 local CursorKind
 do
+  local _class_0
   local _base_0 = { }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, value)
       self.value = value
       self.string = cursor_map[self.value]
@@ -577,9 +578,10 @@ do
 end
 local CompletionKind
 do
+  local _class_0
   local _base_0 = { }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, value)
       self.value = value
       self.string = completion_map[self.value]
@@ -599,9 +601,10 @@ do
 end
 local CompletionChunk
 do
+  local _class_0
   local _base_0 = { }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, text, kind)
       self.text, self.kind = text, kind
     end,
@@ -620,9 +623,10 @@ do
 end
 local CompletionString
 do
+  local _class_0
   local _base_0 = { }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, __string)
       self.__string = __string
       local chunk_count = libclang.clang_getNumCompletionChunks(self.__string)
@@ -649,9 +653,10 @@ do
 end
 local CompletionResult
 do
+  local _class_0
   local _base_0 = { }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, __result)
       self.__result = __result
       self.kind = CursorKind(self.__result.CursorKind)
@@ -672,13 +677,14 @@ do
 end
 local CompletionResults
 do
+  local _class_0
   local _base_0 = {
     sort = function(self)
       return liblcang.clang_sortCodeCompletionResults(self.__results[0].Results, self.__results[0].NumResults)
     end
   }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, __results)
       self.__results = __results
       self.__results = ffi.gc(self.__results, libclang.clang_disposeCodeCompleteResults)
@@ -705,6 +711,7 @@ do
 end
 local Cursor
 do
+  local _class_0
   local _base_0 = {
     visit = function(self, func)
       local cb = ffi.cast('ljclang_callback', function(cursor, parent, _)
@@ -729,7 +736,7 @@ do
     end
   }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, __cursor)
       self.__cursor = __cursor
       self.visit_break = self.__class.visit_break
@@ -760,6 +767,7 @@ do
 end
 local TranslationUnit
 do
+  local _class_0
   local _base_0 = {
     reparse = function(self, unsaved, options)
       if unsaved == nil then
@@ -786,7 +794,7 @@ do
     end
   }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, __unit)
       self.__unit = __unit
       self.__unit = ffi.gc(self.__unit, libclang.clang_disposeTranslationUnit)
@@ -816,6 +824,7 @@ do
 end
 local Index
 do
+  local _class_0
   local _base_0 = {
     parse = function(self, path, args, unsaved, options)
       if args == nil then
@@ -839,7 +848,7 @@ do
     end
   }
   _base_0.__index = _base_0
-  local _class_0 = setmetatable({
+  _class_0 = setmetatable({
     __init = function(self, exclude_pch_decls, display_diagnostics)
       if exclude_pch_decls == nil then
         exclude_pch_decls = 0

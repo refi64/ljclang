@@ -115,7 +115,7 @@ void clang_sortCodeCompletionResults(CXCompletionResult *Results,
 void clang_disposeCodeCompleteResults(CXCodeCompleteResults *Results);
 ]]
 
-libclang = ffi.load 'ljclang'
+libclang = ffi.load "#{debug.getinfo(1).source\match '@?(.*/)'}/libljclang.so"
 
 cursor_map = {}
 cursor_map[1] = 'UnexposedDecl'
