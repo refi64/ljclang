@@ -640,7 +640,7 @@ class Index
     {unsaved_c, unsaved_len} = unsaved_files unsaved
     args_c = ffi.new 'const char*[?]', #args, args
     unit = libclang.clang_parseTranslationUnit @__index, path, args_c, #args, unsaved_c, unsaved_len, opts options
-    assert unit
+    assert unit != nil
     TranslationUnit unit
 
 {:Index, :TranslationUnit, :Cursor, :CursorKind, :CompletionChunk,

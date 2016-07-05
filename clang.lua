@@ -843,7 +843,7 @@ do
       end
       local args_c = ffi.new('const char*[?]', #args, args)
       local unit = libclang.clang_parseTranslationUnit(self.__index, path, args_c, #args, unsaved_c, unsaved_len, opts(options))
-      assert(unit)
+      assert(unit ~= nil)
       return TranslationUnit(unit)
     end
   }
